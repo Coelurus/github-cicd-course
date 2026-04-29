@@ -20,6 +20,8 @@ jobs:
   docker:
     runs-on: "ubuntu-latest"
     name: Docker build
+    outputs:
+      image: ${{ steps.img.outputs.name }}
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
@@ -39,12 +41,15 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: type=ref,event=tag
+      - name: Lowercase image name
+        id: img
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: ./task_b
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{ inputs.tag }}
+          tags: ${{ steps.img.outputs.name }}:${{ inputs.tag }}
           labels: ${{ steps.meta.outputs.labels }}
 
   test:
@@ -53,7 +58,7 @@ jobs:
     needs: docker
     services:
       app:
-        image: ghcr.io/${{ github.repository }}:${{ inputs.tag }}
+        image: ${{ needs.docker.outputs.image }}:${{ inputs.tag }}
         credentials:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
