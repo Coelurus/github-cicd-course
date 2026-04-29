@@ -1,0 +1,40 @@
+name: task-a ci
+
+on:
+  pull_request:
+    paths:
+      - 'task_a/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    name: pytest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "pypy3.10"]
+        exclude:
+          - os: macos-latest
+            python-version: "3.10"
+          - os: windows-latest
+            python-version: "3.10"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: ./task_a/requirements.txt
+      - name: Install dependencies
+        run: pip install -r ./task_a/requirements.txt
+      - name: Run pytest
+        run: pytest ./task_a --html=report.html --self-contained-html
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Report-${{ matrix.os }}-${{ matrix.python-version }}
+          path: report.html
